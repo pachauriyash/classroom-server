@@ -1,0 +1,28 @@
+<%- include("partials/header"); -%>
+
+  <h1>Admin register Panel</h1>
+  <form action="/createclass" method="POST">
+    <div class="form-group">
+      <label for="classTitle">classTitle</label>
+      <input type="text" name="classTitle" class="form-control">
+  </div>
+  <div class="form-group">
+    <label for="classYear">classYear</label>
+    <input type="number" name="classYear" class="form-control">
+  </div>
+    <div class="form-group">
+        <label for="classSection">classSection</label>
+        <input type="text" name="classSection" class="form-control">
+    </div>
+    <div class="form-group">
+        <label for="classDesc">classDesc</label>
+        <input type="text" name="classDesc" class="form-control">
+    </div>
+    <div class="form-group">
+        <label for="classCode">classCode</label>
+        <input type="text" name="classCode" class="form-control">
+    </div>
+    <button type="submit" class="btn btn-dark">Create class</button>
+  </form>
+
+<%- include("partials/footer"); -%>
