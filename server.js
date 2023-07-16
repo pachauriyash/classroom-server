@@ -42,7 +42,7 @@ app.set('view engine', 'ejs');
 //   next();
 // });
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -93,16 +93,18 @@ app.get('/', async (req, res) => {
 });
 
 app.get("/register",function(req,res){
-    res.render("register");
+  res.json({message: "Display the register page"});
   });
   app.get("/createclass",function(req,res){
-    res.render("createclass");
+    //res.render("createclass");
+    res.json({message: "Display the create class page"});
   });
 app.get("/login",function(req,res){
     if(req.isAuthenticated()){
       res.redirect("/");
     }else{
-      res.render("adminlogin");
+      //res.render("adminlogin");
+      res.json({message: "Display the login page"});
     }
   });
 app.get("/logout",function(req,res){
