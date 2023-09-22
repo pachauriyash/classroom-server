@@ -5,7 +5,10 @@ import passportLocalMongoose from "passport-local-mongoose";
 const postSchema = new mongoose.Schema({
   content: {
     type: String,
-    required: true
+  },
+  fileName: {
+    type: String, // Add a field to store the file name as a string
+    required: false // Depending on whether the post includes a file or not
   },
   author: {
     type: mongoose.Schema.Types.ObjectId,
@@ -28,3 +31,5 @@ const postSchema = new mongoose.Schema({
 //postSchema.plugin(passportLocalMongoose);
 const Post = mongoose.model('Post', postSchema);
 export default Post;
+
+

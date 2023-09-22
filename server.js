@@ -12,17 +12,21 @@ import Feed from "./models/feed.js"
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import multer from 'multer';
+import { extname } from 'path';
+import fs from 'fs';
+
 dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
 const port = 9000;
-
+//app.use(express.static(__dirname + '/public'));
 app.set('view engine', 'ejs');
 // app.use(
 //     cors({
-//          origin: "*", // Allow requests from any origin
+//          origin: 'http://localhost:3000', // Allow requests from any origin
 //          methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
 //          credentials: true, // allow session cookie from browser to pass through
 //    })
@@ -71,6 +75,21 @@ app.use(session({
 }));
 app.use(passport.initialize());
 app.use(passport.session());
+
+//multer file storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'public/files'); // Specify the destination folder
+  },
+  filename: (req, file, cb) => {
+    // Define how files should be named
+    cb(null, `${file.fieldname}-${Date.now()}${extname(file.originalname)}`);
+  },
+});
+
+const upload = multer({ storage });
+
+
 
 // Define routes
 
@@ -301,11 +320,62 @@ app.get("/class/:classId", async (req, res) => {
 
 //post route to get the data for feed post
 
-app.post("/class/:classId/feed", async (req, res) => {
+// app.post("/class/:classId/feed", async (req, res) => {
+//   if (req.isAuthenticated()) {
+//     const { classId } = req.params;
+//     const { content } = req.body;
+//     const authorId = req.user._id;
+
+//     try {
+//       // Check if the class exists and the user is authorized
+//       const foundClass = await Class.findById(classId);
+//       if (!foundClass) {
+//         return res.status(404).json({ message: "Class not found" });
+//       }
+
+//       // Create a new post
+//       const newPost = new Post({
+//         content,
+//         author: authorId,
+//         classId: classId,
+//       });
+//       await newPost.save();
+
+//       // Save the post to the class-specific feed
+//       const foundFeed = await Feed.findOneAndUpdate(
+//         { classId },
+//         { $push: { posts: newPost._id } },
+//         { new: true }
+//       );
+//       const tempost= {
+//         _id: newPost._id,
+//         author:{
+//           firstName: req.user.firstName,
+//           lastName: req.user.lastName,
+//           username: req.user.username
+//         },
+//         content: content,
+//         createdAt: newPost.createdAt,
+//       }
+//       console.log("Post added successfully");
+//       console.log(newPost);
+
+//       res.json({ message: "Post added successfully", post: tempost });
+//     } catch (error) {
+//       console.error(error);
+//       res.status(500).json({ message: "Internal Server Error" });
+//     }
+//   } else {
+//     res.status(401).json({ message: "Unauthorized" });
+//   }
+// });
+
+app.post("/class/:classId/feed", upload.single('file'), async (req, res) => {
   if (req.isAuthenticated()) {
     const { classId } = req.params;
     const { content } = req.body;
     const authorId = req.user._id;
+    const fileName = req.file ? req.file.filename : null; // Get the file name from the uploaded file
 
     try {
       // Check if the class exists and the user is authorized
@@ -319,6 +389,7 @@ app.post("/class/:classId/feed", async (req, res) => {
         content,
         author: authorId,
         classId: classId,
+        fileName, // Save the file name in the post
       });
       await newPost.save();
 
@@ -328,16 +399,19 @@ app.post("/class/:classId/feed", async (req, res) => {
         { $push: { posts: newPost._id } },
         { new: true }
       );
-      const tempost= {
+      
+      const tempost = {
         _id: newPost._id,
-        author:{
+        author: {
           firstName: req.user.firstName,
           lastName: req.user.lastName,
           username: req.user.username
         },
         content: content,
+        fileName: fileName, // Include the file name in the response
         createdAt: newPost.createdAt,
       }
+
       console.log("Post added successfully");
       console.log(newPost);
 
@@ -352,6 +426,36 @@ app.post("/class/:classId/feed", async (req, res) => {
 });
 
 //get route to get the posts and send to client
+// app.get('/class/:classId/feed', async (req, res) => {
+//   try {
+//     const { classId } = req.params;
+
+//     // Find the feed for the specified classId
+//     const foundFeed = await Feed.findOne({ classId });
+
+//     if (!foundFeed) {
+//       return res.status(404).json({ message: 'Feed not found' });
+//     }
+
+//     // Retrieve the post details for each post ID in the feed, sorted by createdAt in descending order
+//     const postDetails = [];
+
+//     for (let i = foundFeed.posts.length - 1; i >= 0; i--) {
+//       const postId = foundFeed.posts[i];
+//       const post = await Post.findById(postId)
+//         .populate('author', 'firstName lastName username')
+//         .select('content createdAt');
+//       postDetails.push(post);
+//     }
+
+//     console.log(postDetails);
+//     res.json({ posts: postDetails });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: 'Internal Server Error' });
+//   }
+// });
+
 app.get('/class/:classId/feed', async (req, res) => {
   try {
     const { classId } = req.params;
@@ -370,7 +474,8 @@ app.get('/class/:classId/feed', async (req, res) => {
       const postId = foundFeed.posts[i];
       const post = await Post.findById(postId)
         .populate('author', 'firstName lastName username')
-        .select('content createdAt');
+        .select('content fileName createdAt'); // Include 'fileName' in the selection
+
       postDetails.push(post);
     }
 
@@ -381,10 +486,33 @@ app.get('/class/:classId/feed', async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+//serving files with conditions
+app.get('/files/:filename', (req, res) => {
+  // This route is protected and can only be accessed by logged-in users
+  const { filename } = req.params;
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  } else {
+    res.sendFile(__dirname + '/public/files/' + filename);
+  }
+});
+
+
+
 //delete route to delete a specific post
 app.delete('/posts/:classId/feed/:postId', async (req, res) => {
   try {
     const { classId, postId } = req.params;
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    // Delete the file from the "public/files" folder
+    if (post.fileName) {
+      const filePath = path.join(__dirname, 'public', 'files', post.fileName);
+      fs.unlinkSync(filePath); // Delete the file
+    }
 
     // Delete the post from the "post" collection
     await Post.findByIdAndDelete(postId);
